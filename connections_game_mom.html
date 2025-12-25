@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connections Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            background-color: #f7f7f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .game-container {
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .title {
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #000;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            text-align: center;
+            font-size: 1rem;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .found-categories {
+            margin-bottom: 20px;
+        }
+
+        .category-box {
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 8px;
+            border: 2px solid #333;
+            position: relative;
+            overflow: hidden;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .category-box.has-image {
+            padding: 0;
+            background-size: cover;
+            background-position: center;
+        }
+
+        .category-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.6);
+        }
+
+        .category-title {
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+
+        .category-words {
+            font-size: 1rem;
+        }
+
+        .category-box.has-image .category-title,
+        .category-box.has-image .category-words {
+            color: white;
+        }
+
+        .word-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .word-button {
+            background-color: #efefe6;
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 25px 10px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+        }
+
+        .word-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .word-button.selected {
+            background-color: #5a594e;
+            color: white;
+        }
+
+        .attempts {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .attempts-label {
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+
+        .attempts-dots {
+            font-size: 1.2rem;
+            color: #5a594e;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .control-button {
+            background-color: white;
+            border: 2px solid #333;
+            border-radius: 25px;
+            padding: 12px 30px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .control-button:hover {
+            background-color: #f0f0f0;
+        }
+
+        .control-button.submit {
+            background-color: #5a594e;
+            color: white;
+        }
+
+        .control-button.submit:hover {
+            background-color: #45443f;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .modal-text {
+            font-size: 1rem;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .modal-button {
+            background-color: #5a594e;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            padding: 12px 30px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .modal-button:hover {
+            background-color: #45443f;
+        }
+
+        @media (max-width: 600px) {
+            .word-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .title {
+                font-size: 2rem;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            .control-button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1 class="title">Connections</h1>
+        <p class="subtitle">Create four groups of four!</p>
+
+        <div class="found-categories" id="foundCategories"></div>
+
+        <div class="word-grid" id="wordGrid"></div>
+
+        <div class="attempts">
+            <div class="attempts-label">Mistakes remaining:</div>
+            <div class="attempts-dots" id="attemptsDots">● ● ● ●</div>
+        </div>
+
+        <div class="controls">
+            <button class="control-button" onclick="shuffleWords()">Shuffle</button>
+            <button class="control-button" onclick="deselectAll()">Deselect All</button>
+            <button class="control-button submit" onclick="submitGuess()">Submit</button>
+        </div>
+    </div>
+
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <div class="modal-title" id="modalTitle"></div>
+            <div class="modal-text" id="modalText"></div>
+            <button class="modal-button" onclick="closeModal()">OK</button>
+        </div>
+    </div>
+
+    <script>
+        // Game data - Three rounds
+        const rounds = [
+            {
+                name: "Round 1",
+                categories: {
+                    "New year's resolutions": {
+                        words: ["5 stamps", "Sunsets", "Japanese fluency", "Walk Margot"],
+                        color: "#f9df6d",
+                        image: null
+                    },
+                    "Dog breeds": {
+                        words: ["Australian Cattle", "Hotdog", "Jura", "Wolf"],
+                        color: "#a0c35a",
+                        image: null
+                    },
+                    "Highschool Dede": {
+                        words: ["Tennis", "Ballet", "Cheer", "Ski"],
+                        color: "#b0c4ef",
+                        image: null
+                    },
+                    "Music you know": {
+                        words: ["Agnetha", "Sting", "Sinead", "Crazy 8s"],
+                        color: "#ba81c5",
+                        image: null
+                    }
+                }
+            },
+            {
+                name: "Round 2",
+                categories: {
+                    "Grandma's hobbies": {
+                        words: ["Sew", "Ski", "Bake", "Bridge"],
+                        color: "#f9df6d",
+                        image: null
+                    },
+                    "Key exports from places you've lived": {
+                        words: ["Orange", "Cherry", "Beer", "Chocolate"],
+                        color: "#a0c35a",
+                        image: null
+                    },
+                    "You + boys, patron saint of ____": {
+                        words: ["Animals", "Christmas", "Fathers", "Mothers"],
+                        color: "#b0c4ef",
+                        image: null
+                    },
+                    "Your favorite foods": {
+                        words: ["Digestives", "Kimchi", "Dorayaki", "Thai food"],
+                        color: "#ba81c5",
+                        image: null
+                    }
+                }
+            },
+            {
+                name: "Round 3",
+                categories: {
+                    "Homophones for Japanese numbers": {
+                        words: ["Knee", "Itchy", "Go", "Ray"],
+                        color: "#f9df6d",
+                        image: null
+                    },
+                    "Mascots at schools Mom attended": {
+                        words: ["Charlie", "Spike", "Wildcat", "Indian"],
+                        color: "#a0c35a",
+                        image: null
+                    },
+                    "Parts of K-drama titles Mom watched": {
+                        words: ["Sunshine", "25", "Family", "Summer"],
+                        color: "#b0c4ef",
+                        image: "21_25photo.jpg"
+                    },
+                    "Car models": {
+                        words: ["Civic", "Leaf", "Odyssey", "Focus"],
+                        color: "#ba81c5",
+                        image: null
+                    }
+                }
+            }
+        ];
+
+        // Game state
+        let currentRound = 0;
+        let categories = {};
+        let remainingWords = [];
+        let selectedWords = new Set();
+        let foundCategories = [];
+        let attemptsRemaining = 4;
+
+        // Initialize game
+        function initGame() {
+            loadRound(currentRound);
+        }
+
+        // Load a round
+        function loadRound(roundIndex) {
+            currentRound = roundIndex;
+            categories = rounds[roundIndex].categories;
+            foundCategories = [];
+            attemptsRemaining = 4;
+            selectedWords.clear();
+            
+            // Update title to show round
+            document.querySelector('.subtitle').textContent = `${rounds[roundIndex].name} - Create four groups of four!`;
+            
+            // Clear found categories display
+            document.getElementById('foundCategories').innerHTML = '';
+            
+            // Collect all words and shuffle
+            remainingWords = [];
+            Object.values(categories).forEach(cat => {
+                remainingWords.push(...cat.words);
+            });
+            shuffleArray(remainingWords);
+            
+            updateAttempts();
+            renderWordGrid();
+            
+            // Re-enable buttons
+            document.querySelectorAll('.word-button').forEach(btn => btn.disabled = false);
+            document.querySelectorAll('.control-button').forEach(btn => btn.disabled = false);
+        }
+
+        // Shuffle array
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        // Render word grid
+        function renderWordGrid() {
+            const grid = document.getElementById('wordGrid');
+            grid.innerHTML = '';
+            
+            remainingWords.forEach(word => {
+                const button = document.createElement('button');
+                button.className = 'word-button';
+                button.textContent = word;
+                button.onclick = () => toggleWord(word);
+                
+                if (selectedWords.has(word)) {
+                    button.classList.add('selected');
+                }
+                
+                grid.appendChild(button);
+            });
+        }
+
+        // Toggle word selection
+        function toggleWord(word) {
+            if (selectedWords.has(word)) {
+                selectedWords.delete(word);
+            } else {
+                if (selectedWords.size < 4) {
+                    selectedWords.add(word);
+                }
+            }
+            renderWordGrid();
+        }
+
+        // Deselect all words
+        function deselectAll() {
+            selectedWords.clear();
+            renderWordGrid();
+        }
+
+        // Shuffle words
+        function shuffleWords() {
+            shuffleArray(remainingWords);
+            deselectAll();
+        }
+
+        // Submit guess
+        function submitGuess() {
+            if (selectedWords.size !== 4) {
+                showModal('Invalid Selection', `Please select exactly 4 words.\nYou have selected ${selectedWords.size} word(s).`);
+                return;
+            }
+
+            const result = checkGuess(selectedWords);
+            
+            if (result.correct) {
+                addFoundCategory(result.category, Array.from(selectedWords));
+                remainingWords = remainingWords.filter(w => !selectedWords.has(w));
+                selectedWords.clear();
+                renderWordGrid();
+                
+                if (remainingWords.length === 0) {
+                    // Round complete!
+                    if (currentRound < rounds.length - 1) {
+                        // More rounds to go
+                        showModal('Round Complete!', `🎉 Great job! You completed ${rounds[currentRound].name}!\n\nGet ready for ${rounds[currentRound + 1].name}!`, () => {
+                            loadRound(currentRound + 1);
+                        });
+                    } else {
+                        // All rounds complete!
+                        showModal('Congratulations!', '🎉 You completed all rounds!\n\nAmazing work!');
+                    }
+                }
+            } else {
+                attemptsRemaining--;
+                updateAttempts();
+                
+                if (result.message) {
+                    showModal('Incorrect', result.message);
+                } else {
+                    showModal('Incorrect', "That's not a category. Try again!");
+                }
+                
+                deselectAll();
+                
+                if (attemptsRemaining === 0) {
+                    gameOver();
+                }
+            }
+        }
+
+        // Check if guess is correct
+        function checkGuess(selected) {
+            const selectedArray = Array.from(selected);
+            
+            for (let [categoryName, categoryData] of Object.entries(categories)) {
+                const categoryWords = categoryData.words;
+                if (categoryWords.length === selectedArray.length &&
+                    categoryWords.every(w => selected.has(w))) {
+                    return { correct: true, category: categoryName };
+                }
+            }
+            
+            // Check for "one away"
+            for (let categoryData of Object.values(categories)) {
+                const matches = categoryData.words.filter(w => selected.has(w)).length;
+                if (matches === 3) {
+                    return { correct: false, message: "One away..." };
+                }
+            }
+            
+            return { correct: false };
+        }
+
+        // Add found category to display
+        function addFoundCategory(categoryName, words) {
+            const categoryData = categories[categoryName];
+            const container = document.getElementById('foundCategories');
+            
+            const categoryBox = document.createElement('div');
+            categoryBox.className = 'category-box';
+            categoryBox.style.backgroundColor = categoryData.color;
+            
+            if (categoryData.image) {
+                categoryBox.classList.add('has-image');
+                categoryBox.style.backgroundImage = `url('${categoryData.image}')`;
+                
+                const overlay = document.createElement('div');
+                overlay.className = 'category-overlay';
+                
+                const title = document.createElement('div');
+                title.className = 'category-title';
+                title.textContent = categoryName.toUpperCase();
+                
+                const wordsDiv = document.createElement('div');
+                wordsDiv.className = 'category-words';
+                wordsDiv.textContent = words.join(', ');
+                
+                overlay.appendChild(title);
+                overlay.appendChild(wordsDiv);
+                categoryBox.appendChild(overlay);
+            } else {
+                const title = document.createElement('div');
+                title.className = 'category-title';
+                title.textContent = categoryName.toUpperCase();
+                
+                const wordsDiv = document.createElement('div');
+                wordsDiv.className = 'category-words';
+                wordsDiv.textContent = words.join(', ');
+                
+                categoryBox.appendChild(title);
+                categoryBox.appendChild(wordsDiv);
+            }
+            
+            container.appendChild(categoryBox);
+            foundCategories.push(categoryName);
+        }
+
+        // Update attempts display
+        function updateAttempts() {
+            const dots = '● '.repeat(attemptsRemaining) + '○ '.repeat(4 - attemptsRemaining);
+            document.getElementById('attemptsDots').textContent = dots.trim();
+        }
+
+        // Game over
+        function gameOver() {
+            let remaining = [];
+            for (let [categoryName, categoryData] of Object.entries(categories)) {
+                if (!foundCategories.includes(categoryName)) {
+                    remaining.push(`${categoryName}:\n  ${categoryData.words.join(', ')}`);
+                }
+            }
+            
+            const msg = `Game Over! You ran out of attempts.\n\nThe remaining categories were:\n\n${remaining.join('\n\n')}`;
+            showModal('Game Over', msg);
+            
+            // Disable buttons
+            document.querySelectorAll('.word-button').forEach(btn => btn.disabled = true);
+            document.querySelectorAll('.control-button').forEach(btn => btn.disabled = true);
+        }
+
+        // Show modal
+        function showModal(title, text, callback) {
+            document.getElementById('modalTitle').textContent = title;
+            document.getElementById('modalText').textContent = text;
+            document.getElementById('modal').classList.add('show');
+            
+            // Store callback for when modal is closed
+            document.getElementById('modal').dataset.callback = callback ? 'true' : 'false';
+            if (callback) {
+                window.modalCallback = callback;
+            }
+        }
+
+        // Close modal
+        function closeModal() {
+            document.getElementById('modal').classList.remove('show');
+            
+            // Execute callback if one was set
+            if (document.getElementById('modal').dataset.callback === 'true') {
+                if (window.modalCallback) {
+                    window.modalCallback();
+                    window.modalCallback = null;
+                }
+            }
+        }
+
+        // Start the game
+        initGame();
+    </script>
+</body>
+</html>
